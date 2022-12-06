@@ -13,6 +13,9 @@ import os
 import sys
 import pickle
 import copy
+from torch.utils.data import Dataset, DataLoader, random_split
+from glob import glob
+from PIL import Image
 
 cwd = os.getcwd()
 sys.path.append(cwd+'/../')
@@ -21,7 +24,30 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 from decompose import Decompose
 
-def save_state(model, acc):
+
+class ShapesDataset(Dataset):
+    def __init__(self, data_dir: str, transforms):
+        shapes = sorted(os.listdir(data_dir))
+        self.transforms = transforms
+        self.data_paths = []
+        self.labels = []
+        for i, shape in enumerate(shapes):
+            data_paths = glob(os.path.join(data_dir, shape, "*"))
+            self.data_paths += data_paths
+            self.labels += [i for _ in range(len(data_paths))]
+
+    def __getitem__(self, index):
+        data_path, label = self.data_paths[index], self.labels[index]
+        image = Image.open(data_path)
+        image = image.resize((32, 32))
+        if self.transforms is not None:
+            image = self.transforms(image)
+        return image, label
+
+    def __len__(self):
+        return len(self.data_paths)
+
+def save_state(model, acc, mname):
     print('==> Saving model ...')
     state = {
             'acc': acc,
@@ -77,7 +103,14 @@ def save_state(model, acc):
                                     str(args.pruning_ratio),
                                     'pth.tar'])
 
+    # torch.save(state, os.path.join('saved_models/', model_filename))
     torch.save(state, os.path.join('saved_models/', model_filename))
+    # model_name = 'res18_cifar.pth'
+    torch.save(model, os.path.join('saved_models/', mname))
+
+# def save_model(model):
+#     model_filename = 'res18_cifar.pth'
+#     torch.save(model, os.path.join('saved_models/', model_filename))
 
 
 def train(epoch):
@@ -118,7 +151,7 @@ def test(epoch, evaluate=False):
         best_acc = acc
         best_epoch = epoch
         if not evaluate:
-            save_state(model, best_acc)
+            save_state(model, best_acc, mname=args.mname)
 
     test_loss /= len(test_loader.dataset)
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
@@ -157,6 +190,7 @@ def weight_init(model, decomposed_weight_list, target):
 if __name__=='__main__':
     # settings
     parser = argparse.ArgumentParser(description='Neuron Merging Example')
+    parser.add_argument('--mname', type=str)
     parser.add_argument('--batch-size', type=int, default=128, metavar='N',
             help='input batch size for training (default: 128)')
     parser.add_argument('--test-batch-size', type=int, default=256, metavar='N',
@@ -295,6 +329,21 @@ if __name__=='__main__':
         test_loader = torch.utils.data.DataLoader(test_data, batch_size=args.test_batch_size, shuffle=False, **kwargs)
 
         num_classes = 10
+
+    elif args.dataset == 'shapes':
+        transform = transforms.ToTensor()
+        data_path = '/localhome/asa420/Lottery-Ticket-Hypothesis-in-Pytorch/data/shapes'
+        dataset = ShapesDataset(data_path, transform)
+        train_dataset_num = int(len(dataset)*0.8)
+        test_dataset_num = len(dataset) - train_dataset_num
+        train_dataset, test_dataset = random_split(dataset, [train_dataset_num, test_dataset_num], generator=torch.Generator().manual_seed(42))
+
+        kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
+        # val_data_loader = DataLoader(val_dataset, batch_size, shuffle=False)
+        test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, **kwargs)
+
+        num_classes = 4
 
     else : 
         pass
