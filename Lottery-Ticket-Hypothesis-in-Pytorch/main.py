@@ -42,8 +42,20 @@ def main(args, ITE=0):
         from archs.mnist import AlexNet, LeNet5, fc1, vgg, resnet
 
     elif args.dataset == "cifar10":
-        traindataset = datasets.CIFAR10('../data', train=True, download=True,transform=transform)
-        testdataset = datasets.CIFAR10('../data', train=False, transform=transform)
+        transform_train = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ])
+
+        transform_test = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ])
+
+        traindataset = datasets.CIFAR10('../data', train=True, download=True,transform=transform_train)
+        testdataset = datasets.CIFAR10('../data', train=False, transform=transform_test)
         from archs.cifar10 import AlexNet, LeNet5, fc1, vgg, resnet, densenet
 
     elif args.dataset == "fashionmnist":

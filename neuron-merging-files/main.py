@@ -308,7 +308,7 @@ if __name__=='__main__':
         num_classes = 100
 
     elif args.dataset == 'mnist':
-        transform = transforms.Compose([ transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,)) ])
+        transform = transforms.Compose([ transforms.Resize((32, 32)), transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,)) ])
 
         train_data = datasets.MNIST('./data', train=True, download=True, transform=transform)
         test_data = datasets.MNIST('./data', train=False, download=True, transform=transform)
@@ -320,7 +320,7 @@ if __name__=='__main__':
         num_classes = 10
 
     elif args.dataset == 'FashionMNIST':
-        transform = transforms.Compose([ transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,)) ])
+        transform = transforms.Compose([ transforms.Resize((32, 32)), transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,)) ])
         train_data = datasets.FashionMNIST('data', train=True, download=True, transform=transform)
         test_data = datasets.FashionMNIST('data', train=False, download=True, transform=transform)
 
